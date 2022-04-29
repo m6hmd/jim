@@ -1,4 +1,4 @@
-pyTelegramBotAPI
+ttbotapi
 flask
 user_agent
 requests
