@@ -1,65 +1,70 @@
-import requests, user_agent, json, flask, telebot, random, os, sys, time
-import telebot
+import requests, user_agent, json, flask, random, os, sys, time
+import ttbotapi
 import threading
-from telebot import types
 from user_agent import generate_user_agent
 import logging
 from config import *
 from flask import Flask, request
 
-BOT_TOKEN = "1132931143:AAGwzukJusNzc5XjSvIMS92X8qLtGo9_Im4"
-bot = telebot.TeleBot(BOT_TOKEN)
+BOT_TOKEN = "Yp0Zisu4-3V853wb9KZitCv99kjx_jhkX5q7oIrJwN8"
+bot = ttbotapi.Bot(access_token=BOT_TOKEN)
 server = Flask(__name__)
-logger = telebot.logger
+logger = ttbotapi.logger
 logger.setLevel(logging.DEBUG)
 
+
 abu_jasim = {}
-def check(text):
-      user = []
-      count = 0
-      username = text.split(":")[1]
-      user.append(username)
-      abu_jasim.setdefault(user[0], 0)
-      token = text.split(":")[0]
-      url = "https://botapi.tamtam.chat/"
-      params = {"access_token": token}
-      method = 'me'
-      data = {
-          "username": username
-      }
-      if ":" in text and text.split(":")[0] != '' and text.split(":")[1] != '':
+def check(update):
+    user = []
+    count = 0
+    if ":" in update.message.body.text and update.message.body.text.split(":")[0] != '' and update.message.body.text.split(":")[1] != '':
+        username = update.message.body.text.split(":")[1]
+        user.append(username)
+        abu_jasim.setdefault(user[0], 0)
+        token = update.message.body.text.split(":")[0]
+        url = "https://botapi.tamtam.chat/"
+        params = {"access_token": token}
+        method = 'me'
+        data = {
+            "username": username
+        }
+
+        bot.send_message(text="[+]Username :: {}\nStarted ....".format(user[0]), user_id=update.message.sender.user_id , chat_id=None)
         while True:
-          response = requests.patch(url + method, params=params, data=json.dumps(data)).text
-          # if '"This name is already in use"' in response :
-
-          if '"username":"{}"'.format(username) in response:
-                requests.get("https://api.telegram.org/bot658204306:AAEGf-4x6znalHoDevsMsSr-hi8VHp4nMjU/sendMessage?chat_id=420953620&text=[+]Done Hunted\n— — — —\n[+]Username :: {}\n[+]Requests Number :: {}".format(username, abu_jasim[username]))
+            response = requests.patch(url + method, params=params, data=json.dumps(data)).text
+            # if '"This name is already in use"' in response :
+            print(response)
+            if '"username":"{}"'.format(username) in response:
+                bot.send_message(text="[+]Done Hunted\n— — — —\n[+]Username :: {}\n[+]Requests Number :: {}".format(
+                                     username, abu_jasim[username]), user_id=update.message.sender.user_id , chat_id=None)
                 a = requests.patch(url + method, params=params, data=json.dumps(data)).text
-                print(a)
+                abu_jasim.pop(username)
+                print(str(a))
                 break
-          elif 'Invalid access_token:' in response:
-            break
-          else:
-            abu_jasim[user[0]] += 1
-            print("[+]Username :: {}\n[+]Requests Number :: {}".format(user[0], abu_jasim[user[0]]))
-            # bot.edit_message_text(chat_id=message.chat.id, message_id=infoM.message_id, text="[+]Username :: {}\n[+]Requests Number :: {}".format(username, count))
-pastebin = requests.get("https://pastebin.com/raw/ShhRQVBK").text.splitlines()
-for it in pastebin:
-    threading.Thread(target=check, args=[it.replace("\n",'')]).start()
-bot.send_message(chat_id=420953620,text=f'Started... {str(len(abu_jasim))}')
-def sendd(message):
-    a = []
-    if len(abu_jasim) > 0:
-        for item in abu_jasim:
-            a.append(" {} :: {}\n".format(item, abu_jasim[item]))
-            users = "".join(a[:51])
-            bot.send_message(message.chat.id, text=users)
-    else:
-        bot.send_message(message.chat.id, "[+]Not Found Username ...")
-@bot.message_handler(commands=['check'])
-def Send(message):
-    threading.Thread(target=sendd, args=message).start()
+            elif 'Invalid' in response:
+                bot.send_message(text='Send Right Token', user_id=update.message.sender.user_id , chat_id=None)
+                abu_jasim.pop(username)
+                break
+            else:
+                abu_jasim[user[0]] += 1
+                print("[+]Username :: {}\n[+]Requests Number :: {}".format(user[0], abu_jasim[user[0]]))
 
+    elif "/check" in update.message.body.text:
+        info = []
+        if len(abu_jasim) > 0:
+            for item in abu_jasim:
+                info.append("[+]Username :: {}\n[+]Requests Number :: {}".format(item, abu_jasim[item]))
+            bot.send_message(text="\n---------------------\n".join(info), user_id=update.message.sender.user_id , chat_id=None)
+        else:
+            bot.send_message(text="[+]Not Found Username ...", user_id=update.message.sender.user_id , chat_id=None)
+    else:
+        bot.send_message(text="[+]Send Information Like :\nToken:username", user_id=update.message.sender.user_id , chat_id=None)
+
+
+
+@bot.update_handler(chat_type='dialog')
+def send_hi(update):
+    threading.Thread(target=check, args=[update]).start()
 
             
 @server.route(f"/{BOT_TOKEN}", methods=["POST"])
